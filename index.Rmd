@@ -159,7 +159,9 @@ p <- layout(p,
 p
 ```
 
-We can see that t-SNE algorithm is able to divide our dataframe matching perfectly the subdivision identified by **structure** software. There is just one individual, "MALVASIA ISTRIANA" (group C), which is, according to t-SNE, closer to group A, and also maybe "TERBASCI_cp2" (group A), which is maybe closer to group B 
+We can see that t-SNE algorithm is able to divide our dataframe matching perfectly the subdivision identified by **structure** software. There is just one individual, "MALVASIA ISTRIANA" (group C), which is, according to t-SNE, closer to group A, and also "TERBASCI_cp2" (group A), which is maybe closer to group B.
+
+### FEEDBACKS WELCOME!!
 
 
 
