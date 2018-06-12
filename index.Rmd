@@ -1,0 +1,172 @@
+---
+title: "t-SNE algorithm with population genetics data"
+author: "Pietro Delfino"
+date: "`r format (Sys.Date())`"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(Rtsne); library(tidyverse); library(plotly);
+library(poppr); library(data.table)
+```
+
+## The data
+The dataset here is a table displaying microsatellite size info for 214 grapevine cultivars, genotyped at 45 loci. The info is stored in the **Genalex** format as explained in the **poppr** package vignette. In the first row we have loci number, number of individuals, number of probable populations (as obtained in this case by **strauto** software [http://www.crypticlineage.net/pages/software.html]), and the number of individuals belonging to each one of the population. Populations in this case are called with letters from *a* to *f*. There are missing values as empty cells
+
+## My IDEA
+My goal is to apply t-SNE algorithm to SSR data without *a priori* knowledge on populations subdivisions, to see if this technique is able to identify the subgroups as identified with other methods such as Bayesian methods developed with the software **structure** (https://web.stanford.edu/group/pritchardlab/structure.html). The groups in the original file have indeed been identified with the above mentioned software. I will compare the two classifications to see if they are consistent
+
+## Load and explore the data
+I will first load the dataset as normal csv file to show the formatting, then I'll load it again but using the **poppr** function to read Genalex formatted files
+
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+
+geno <- read_csv("data/genotypes.csv",
+                 col_names = FALSE)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+DT::datatable(geno[1:10,1:10], rownames = F, filter = "top")
+```
+
+Now load it using specific function to store microsatellite (genetic markers in general) formats
+
+```{r, message=FALSE, warning=FALSE}
+geno.poppr <- read.genalex("data/genotypes.csv")
+
+class(geno.poppr)[1]
+```
+
+```{r}
+geno.poppr
+```
+
+So as we said, 214 individuals, 45 loci, 6 subpopulations. We are interested in the attribute `tab` of the `geno.poppr` object, that is storing the info on allele frequencies. Indeed we see that once we load the genalex formatted file, allele size info are converted to allele frequencies (0 = no allele, 1 = 1 allele at that size, 2 = 2 alleles at that size, NA = missing value)
+
+```{r}
+geno.poppr$tab[1:10, 1:4]
+
+dim(geno.poppr$tab)
+```
+
+We now need to convert the `genclone` object to a `genind` object in order to scale and center the dataset and imputing missing values before running t-SNE algorithm
+
+```{r}
+geno.poppr.genind <- genclone2genind(geno.poppr)
+
+# we scale and center the matrix and replace NA values with column means
+geno.poppr.genind.imputed <- scaleGen(geno.poppr.genind,
+                                      scale = TRUE,
+                                      center = TRUE,
+                                      NA.method = "mean")
+class(geno.poppr.genind.imputed)
+
+geno.poppr.genind.imputed[1:10, 1:4]
+
+dim(geno.poppr.genind.imputed)
+```
+
+We are now ready to run t-SNE algorithm using the `Rtsne` package (https://github.com/jkrijthe/Rtsne)
+
+```{r, message=FALSE, warning=FALSE}
+set.seed(1234)
+
+tsne <- Rtsne(geno.poppr.genind.imputed,
+              dims=2,
+              perplexity = 10,
+              verbose=T,
+              max_iter = 15000)
+```
+
+Now for plotting we set some graphical parameters. In particular we give a color to each one of the original subpopulations since we want to see if same colors group together
+
+```{r, dev="svg"}
+# exclude first 3 rows since they do not contain subpop info
+colors <- rainbow(length(unique(geno[-c(1:3),]$X2)))
+
+names(colors) <- unique(geno[-c(1:3),]$X2)
+```
+
+### Basic plot
+
+```{r, dev="svg"}
+plot(tsne$Y,
+     t = 'n',
+     main = "tsne")
+
+text(tsne$Y,
+     labels = rownames(geno.poppr.genind.imputed),
+     col = colors[geno[-c(1:3),]$X2] )
+```
+
+### ggplot2
+
+```{r, dev="svg"}
+ggplot(as.data.frame(tsne$Y),
+       aes(x = tsne$Y[,1],
+           y = tsne$Y[,2],
+           col = colors[geno[-c(1:3),]$X2])) +
+  geom_point((aes(col = colors[geno[-c(1:3),]$X2])),
+             size = 2.5,
+             alpha = 0.7,
+             show.legend = FALSE) +
+  theme_bw() +
+  xlab("First dimension") +
+  ylab("Second dimension")
+```
+
+### Plotly
+
+How many groups do you see? Not biased by colors
+
+```{r, dev="svg", warning=FALSE, message=FALSE}
+p <- plot_ly(as.data.frame(tsne$Y),
+             x = tsne$Y[,1],
+             y = tsne$Y[,2],
+             text = rownames(geno.poppr.genind.imputed),
+             mode = "markers",
+             marker = list(size = 11))
+             
+p <- layout(p,
+            title = "Rtsne on SSR data", 
+            xaxis = list(title = "First dimension"),
+            yaxis = list(title = "Second dimension"),
+            showlegend = FALSE)
+p
+```
+
+With colors
+
+```{r, dev="svg", warning=FALSE, message=FALSE}
+p <- plot_ly(as.data.frame(tsne$Y),
+             x = tsne$Y[,1],
+             y = tsne$Y[,2],
+             text = rownames(geno.poppr.genind.imputed),
+             mode = "markers",
+             color = colors[geno[-c(1:3),]$X2],
+             marker = list(size = 11))
+             
+p <- layout(p,
+            title = "Rtsne on SSR data", 
+            xaxis = list(title = "First dimension"),
+            yaxis = list(title = "Second dimension"),
+            showlegend = FALSE)
+p
+```
+
+We can see that t-SNE algorithm is able to divide our dataframe matching perfectly the subdivision identified by **structure** software. There is just one individual, "MALVASIA ISTRIANA" (group C), which is, according to t-SNE, closer to group A, and also maybe "TERBASCI_cp2" (group A), which is maybe closer to group B 
+
+
+
+
+
+
+
+
+
+
