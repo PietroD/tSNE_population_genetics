@@ -17,6 +17,8 @@ library(poppr); library(data.table)
 ## The data
 The dataset here is a table displaying microsatellite size info for 214 grapevine cultivars, genotyped at 45 loci. The info is stored in the **Genalex** format as explained in the **poppr** package vignette. In the first row we have loci number, number of individuals, number of probable populations (as obtained in this case by **strauto** software [http://www.crypticlineage.net/pages/software.html]), and the number of individuals belonging to each one of the population. Populations in this case are called with letters from *a* to *f*. There are missing values as empty cells
 
+--*Unfortunately I cannot share the whole data frame since it is private data. I will soon try the same with public data*-- (hope no one is going to hack this page to access the whole table, otherwise I'll be in trouble!!)
+
 ## My IDEA
 My goal is to apply t-SNE algorithm to SSR data without *a priori* knowledge on populations subdivisions, to see if this technique is able to identify the subgroups as identified with other methods such as Bayesian methods developed with the software **structure** (https://web.stanford.edu/group/pritchardlab/structure.html). The groups in the original file have indeed been identified with the above mentioned software. I will compare the two classifications to see if they are consistent
 
